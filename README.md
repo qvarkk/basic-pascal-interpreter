@@ -1,4 +1,4 @@
-# Basic Pascal Interpretor (in python)
+# Basic Pascal Interpreter (in python)
 ---
 Also include Reverse Polish Notation translator and LISP Notation translator :)
 
