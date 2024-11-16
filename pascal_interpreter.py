@@ -6,8 +6,8 @@
 #                                                      #
 ########################################################
 
-INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = (
-    'INTEGER', 'PLUS', 'MINUS', 'MUL', 'DIV', 'LPAREN', 'RPAREN', 'EOF'
+INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, BEGIN, END, DOT, ID, ASSIGN, SEMI, EOF = (
+    'INTEGER', 'PLUS', 'MINUS', 'MUL', 'div', 'LPAREN', 'RPAREN', 'begin', 'end', 'DOT', 'ID', 'ASSIGN', 'SEMI', 'EOF'
 )
 
 
@@ -32,6 +32,13 @@ class Lexer(object):
     def error(self):
         raise Exception('Invalid character')
 
+    def peek(self):
+        peek_pos = self.pos + 1
+        if peek_pos <= len(self.text) - 1:
+            return self.text[peek_pos]
+        else:
+            return None
+
     def advance(self):
         if self.pos < len(self.text) - 1:
             self.pos += 1
@@ -42,6 +49,24 @@ class Lexer(object):
     def skip_whitespace(self):
         while self.current_character is not None and self.current_character.isspace():
             self.advance()
+
+    RESERVED_KEYWORDS = {
+        BEGIN: Token(BEGIN, 'BEGIN'),
+        END: Token(END, 'END'),
+        DIV: Token(DIV, 'DIV'),
+    }
+
+    def id(self):
+        result = ''
+
+        while self.current_character is not None and self.current_character.isalnum():
+            result += self.current_character
+            self.advance()
+
+        # remove case sensitivity
+        result = result.lower()
+
+        return self.RESERVED_KEYWORDS.get(result, Token(ID, result))
 
     def integer(self):
         result = ''
@@ -55,6 +80,22 @@ class Lexer(object):
             if self.current_character.isspace():
                 self.skip_whitespace()
                 continue
+
+            if self.current_character.isalpha() or self.current_character == '_':
+                return self.id()
+
+            if self.current_character == ':' and self.peek() == '=':
+                self.advance()
+                self.advance()
+                return Token(ASSIGN, ':=')
+
+            if self.current_character == ';':
+                self.advance()
+                return Token(SEMI, ';')
+
+            if self.current_character == '.':
+                self.advance()
+                return Token(DOT, '.')
 
             if self.current_character.isdigit():
                 return Token(INTEGER, self.integer())
@@ -70,10 +111,6 @@ class Lexer(object):
             if self.current_character == '*':
                 self.advance()
                 return Token(MUL, '*')
-
-            if self.current_character == '/':
-                self.advance()
-                return Token(DIV, '/')
 
             if self.current_character == '(':
                 self.advance()
@@ -96,6 +133,28 @@ class Lexer(object):
 
 
 class AST(object):
+    pass
+
+
+class Compound(AST):
+    def __init__(self):
+        self.children = []
+
+
+class Assign(AST):
+    def __init__(self, left, op, right):
+        self.left = left
+        self.token = self.op = op
+        self.right = right
+
+
+class Var(AST):
+    def __init__(self, token):
+        self.token = token
+        self.name = token.value
+
+
+class NoOp(AST):
     pass
 
 
@@ -157,6 +216,9 @@ class Parser(object):
             node = self.expr()
             self.eat(RPAREN)
             return node
+        else:
+            node = self.variable()
+            return node
 
     def term(self):
         node = self.factor()
@@ -186,13 +248,92 @@ class Parser(object):
 
         return node
 
+    def program(self):
+        node = self.compound_statement()
+        self.eat(DOT)
+        return node
+
+    def compound_statement(self):
+        self.eat(BEGIN)
+        nodes = self.statement_list()
+        self.eat(END)
+
+        root = Compound()
+        for node in nodes:
+            root.children.append(node)
+
+        return root
+
+    def statement_list(self):
+        node = self.statement()
+
+        results = [node]
+
+        while self.current_token.type is SEMI:
+            self.eat(SEMI)
+            results.append(self.statement())
+
+        return results
+
+    def statement(self):
+        if self.current_token.type is BEGIN:
+            return self.compound_statement()
+        elif self.current_token.type is ID:
+            return self.assignment_statement()
+        else:
+            return self.empty()
+
+    def assignment_statement(self):
+        left = self.variable()
+        token = self.current_token
+        self.eat(ASSIGN)
+        right = self.expr()
+        return Assign(left, token, right)
+
+    def empty(self):
+        return NoOp()
+
+    def variable(self):
+        token = self.current_token
+        self.eat(ID)
+        return Var(token)
+
     def parse(self):
         """
-            expr   : term ((PLUS | MINUS) term)*
-            term   : factor ((MUL | DIV) factor)*
-            factor : (PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN
+                              GRAMMAR
+
+            program            : compound_statement DOT
+
+            compound_statement : BEGIN statement_list END
+
+            statement_list     : statement |
+                                 statement SEMI statement_list
+
+            statement          : compound_statement |
+                                 assign_statement |
+                                 empty
+
+            assign_statement   : variable ASSIGN expr
+
+            empty              :
+
+            expr               : term ((PLUS | MINUS) term)*
+
+            term               : factor ((MUL | DIV) factor)*
+
+            factor             : PLUS factor |
+                                 MINUS factor |
+                                 INTEGER |
+                                 LPAREN expr RPAREN |
+                                 variable
+
+            variable           : ID
         """
-        return self.expr()
+        node = self.program()
+        if self.current_token.type is not EOF:
+            self.error()
+
+        return node
 
 
 ########################################################
@@ -215,6 +356,26 @@ class NodeVisitor(object):
 class Interpreter(NodeVisitor):
     def __init__(self, parser):
         self.parser = parser
+        self.GLOBAL_SCOPE = {}
+
+    def visit_Compound(self, node):
+        for child in node.children:
+            self.visit(child)
+
+    def visit_Assign(self, node):
+        var_name = node.left.name
+        self.GLOBAL_SCOPE[var_name] = self.visit(node.right)
+
+    def visit_Var(self, node):
+        var_name = node.name
+        value = self.GLOBAL_SCOPE.get(var_name)
+        if value is None:
+            raise NameError(str(var_name))
+        else:
+            return value
+
+    def visit_NoOp(self, node):
+        pass
 
     def visit_BinOp(self, node):
         if node.op.type == PLUS:
@@ -241,17 +402,23 @@ class Interpreter(NodeVisitor):
 
 
 def main():
-    while True:
-        text = input('>>> ')
+    text = """
+    BEGIN
+        BEGIN
+            number := 2;
+            a := NumBer;
+            b := 10 * a + 10 * NUMBER diV 4;
+            c := a - - b;
+        end;
+        x := 11;
+    END.
+    """
 
-        if not text:
-            continue
-
-        lexer = Lexer(text)
-        parser = Parser(lexer)
-        interpreter = Interpreter(parser)
-
-        print(interpreter.interpret())
+    lexer = Lexer(text)
+    parser = Parser(lexer)
+    interpreter = Interpreter(parser)
+    interpreter.interpret()
+    print(interpreter.GLOBAL_SCOPE)
 
 
 if __name__ == '__main__':
