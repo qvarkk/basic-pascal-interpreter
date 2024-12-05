@@ -1,4 +1,5 @@
 """ Pascal interpreter """
+from collections import OrderedDict
 
 ########################################################
 #                                                      #
@@ -17,8 +18,8 @@ INTEGER_CONST, REAL_CONST, ID = (
 )
 
 # RESERVED KEYWORDS DEFINITIONS
-PROGRAM, VAR, BEGIN, END, DIV = (
-    'program', 'var', 'begin', 'end', 'div'
+PROGRAM, VAR, BEGIN, END, DIV, PROCEDURE = (
+    'program', 'var', 'begin', 'end', 'div', 'procedure'
 )
 
 # TYPES RESERVED KEYWORDS DEFINITIONS
@@ -79,6 +80,7 @@ class Lexer(object):
     RESERVED_KEYWORDS = {
         PROGRAM: Token(PROGRAM, 'PROGRAM'),
         VAR: Token(VAR, 'VAR'),
+        PROCEDURE: Token(PROCEDURE, 'PROCEDURE'),
         BEGIN: Token(BEGIN, 'BEGIN'),
         END: Token(END, 'END'),
         DIV: Token(DIV, 'DIV'),
@@ -197,9 +199,9 @@ class AST(object):
 
 
 class Program(AST):
-    def __init__(self, name, block):
+    def __init__(self, name, block_node):
         self.name = name
-        self.block = block
+        self.block = block_node
 
 
 class Block(AST):
@@ -211,6 +213,19 @@ class Block(AST):
 class VarDecl(AST):
     def __init__(self, var_node, type_node):
         self.var_node = var_node
+        self.type_node = type_node
+
+
+class ProcedureDecl(AST):
+    def __init__(self, name, parameters, block_node):
+        self.name = name
+        self.parameters = parameters
+        self.block_node = block_node
+
+
+class ParameterDecl(AST):
+    def __init__(self, var_node, type_node):
+        self.parameter = var_node
         self.type_node = type_node
 
 
@@ -355,6 +370,7 @@ class Parser(object):
 
     def declarations(self):
         declarations = []
+        procedures = []
 
         if self.current_token.type == VAR:
             self.eat(VAR)
@@ -364,7 +380,52 @@ class Parser(object):
                 declarations.extend(var_decl_node)
                 self.eat(SEMI)
 
+        while self.current_token.type == PROCEDURE:
+            self.eat(PROCEDURE)
+            procedure_name = self.current_token.value
+            self.eat(ID)
+
+            parameters = None
+            if self.current_token.type == LPAREN:
+                parameters = self.formal_parameters_list()
+
+            self.eat(SEMI)
+            block_node = self.block()
+            procedures.append(ProcedureDecl(procedure_name, parameters, block_node))
+            self.eat(SEMI)
+
+        declarations.extend(procedures)
         return declarations
+
+    def formal_parameters_list(self):
+        self.eat(LPAREN)
+        parameters = self.formal_parameters()
+        self.eat(RPAREN)
+        return parameters
+
+    def formal_parameters(self):
+        parameters = []
+
+        while self.current_token.type != RPAREN:
+            parameters.extend(self.parameter_declaration())
+            if self.current_token.type != RPAREN:
+                self.eat(SEMI)
+
+        return parameters
+
+    def parameter_declaration(self):
+        var_nodes = [Var(self.current_token)]
+        self.eat(ID)
+
+        while self.current_token.type == COMMA:
+            self.eat(COMMA)
+            var_nodes.append(Var(self.current_token))
+            self.eat(ID)
+
+        self.eat(COLON)
+        type_node = self.type_spec()
+        parameters = [ParameterDecl(var_node, type_node) for var_node in var_nodes]
+        return parameters
 
     def variable_declaration(self):
         var_nodes = [Var(self.current_token)]
@@ -376,9 +437,7 @@ class Parser(object):
             self.eat(ID)
 
         self.eat(COLON)
-
         type_node = self.type_spec()
-
         var_declarations = [VarDecl(var_node, type_node) for var_node in var_nodes]
         return var_declarations
 
@@ -440,45 +499,54 @@ class Parser(object):
 
     def parse(self):
         """
-                              GRAMMAR
+                                GRAMMAR
 
-            program            : PROGRAM variable SEMI block DOT
+            program               : PROGRAM variable SEMI block DOT
 
-            block              : declarations compound_statement
+            block                 : declarations compound_statement
 
-            declarations       : VAR (variable_declaration SEMI)+ |
-                                 empty
+            declarations          : (VAR (variable_declaration SEMI)+)* |
+                                    (PROCEDURE variable formal_parameter_list SEMI block DOT)* |
+                                    PROCEDURE variable SEMI block DOT |
+                                    empty
 
-            variable_declaration : variable (COMMA variable)* COLON type_spec
+            formal_parameter_list : LPAREN formal_parameters RPAREN
 
-            type_spec          : INTEGER |
-                                 REAL
+            formal_parameters     :  variable_declaration SEMI formal_parameters |
+                                     variable_declaration
 
-            compound_statement : BEGIN statement_list END
+            parameter_declaration : variable (COMMA variable)* COLON type_spec
 
-            statement_list     : statement |
-                                 statement SEMI statement_list
+            variable_declaration  : variable (COMMA variable)* COLON type_spec
 
-            statement          : compound_statement |
-                                 assignment_statement |
-                                 empty
+            type_spec             : INTEGER |
+                                    REAL
 
-            assign_statement   : variable ASSIGN expr
+            compound_statement    : BEGIN statement_list END
 
-            empty              :
+            statement_list        : statement |
+                                    statement SEMI statement_list
 
-            expr               : term ((PLUS | MINUS) term)*
+            statement             : compound_statement |
+                                    assignment_statement |
+                                    empty
 
-            term               : factor ((MUL | FLOAT_DIV | DIV) factor)*
+            assign_statement      : variable ASSIGN expr
 
-            factor             : PLUS factor |
-                                 MINUS factor |
-                                 INTEGER_CONST |
-                                 REAL_CONST |
-                                 LPAREN expr RPAREN |
-                                 variable
+            empty                 : λ
 
-            variable           : ID
+            expr                  : term ((PLUS | MINUS) term)*
+
+            term                  : factor ((MUL | FLOAT_DIV | DIV) factor)*
+
+            factor                : PLUS factor |
+                                    MINUS factor |
+                                    INTEGER_CONST |
+                                    REAL_CONST |
+                                    LPAREN expr RPAREN |
+                                    variable
+
+            variable              : ID
         """
         node = self.program()
         if self.current_token.type is not EOF:
@@ -489,9 +557,76 @@ class Parser(object):
 
 ########################################################
 #                                                      #
-#  INTERPRETER                                         #
+#  SYMBOL TABLE                                        #
 #                                                      #
 ########################################################
+
+
+class Symbol(object):
+    def __init__(self, name, type=None):
+        self.name = name
+        self.type = type
+
+
+class BuiltinTypeSymbol(Symbol):
+    def __init__(self, name):
+        super().__init__(name)
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f'<BuiltInTypeSymbol(name={self.name})>'
+
+
+class VarSymbol(Symbol):
+    def __init__(self, name, type):
+        super().__init__(name, type)
+
+    def __str__(self):
+        return f'<VarSymbol(name={self.name}, type={self.type})>'
+
+    __repr__ = __str__
+
+
+class ScopedSymbolTable(object):
+    def __init__(self, scope_name, scope_level):
+        self._symbols = OrderedDict()
+        self.scope_name = scope_name
+        self.scope_level = scope_level
+        self._init_builtins()
+
+    def _init_builtins(self):
+        self.define(BuiltinTypeSymbol('INTEGER'))
+        self.define(BuiltinTypeSymbol('REAL'))
+
+    def __str__(self):
+        lines = []
+        scope_header = '\nSCOPE (ScopedSymbolTable):'
+        lines.append(scope_header)
+        lines.append('=' * len(scope_header))
+
+        scope_name_info = f'Name: {self.scope_name}'
+        scope_level_info = f'Level: {self.scope_level}'
+        lines.append(scope_name_info)
+        lines.append(scope_level_info)
+
+        scope_symbols_header = 'Scope contents:'
+        lines.append(scope_symbols_header)
+        lines.append('-' * len(scope_symbols_header))
+
+        for key, value in self._symbols.items():
+            lines.append('%-14s: %s' % (key, value))
+
+        return '\n'.join(lines)
+
+    __repr__ = __str__
+
+    def define(self, symbol):
+        self._symbols[symbol.name] = symbol
+
+    def lookup(self, name):
+        return self._symbols.get(name)
 
 
 class NodeVisitor(object):
@@ -504,10 +639,9 @@ class NodeVisitor(object):
         raise Exception(f'No visit_{type(node).__name__} method')
 
 
-class Interpreter(NodeVisitor):
-    def __init__(self, parser):
-        self.parser = parser
-        self.GLOBAL_SCOPE = {}
+class SemanticAnalyzer(NodeVisitor):
+    def __init__(self):
+        self.symtab = ScopedSymbolTable('global', 1)
 
     def visit_Program(self, node):
         self.visit(node.block)
@@ -518,6 +652,76 @@ class Interpreter(NodeVisitor):
         self.visit(node.compound_statement)
 
     def visit_VarDecl(self, node):
+        type_name = node.type_node.value
+        type_symbol = self.symtab.lookup(type_name)
+        var_name = node.var_node.name
+
+        if self.symtab.lookup(var_name) is not None:
+            raise Exception(f'Duplicate identifier {var_name} found')
+
+        self.symtab.define(VarSymbol(var_name, type_symbol))
+
+    def visit_ProcDecl(self, node):
+        pass
+
+    def visit_ProcedureDecl(self, node):
+        pass
+
+    def visit_Compound(self, node):
+        for child in node.children:
+            self.visit(child)
+
+    def visit_Assign(self, node):
+        var = self.symtab.lookup(node.left.name)
+        if var is None:
+            raise NameError(f'Variable {node.left.name} not found')
+
+        self.visit(node.right)
+
+    def visit_Var(self, node):
+        var = self.symtab.lookup(node.name)
+
+        if var is None:
+            raise NameError(f'Variable {node.name} not found')
+
+    def visit_NoOp(self, node):
+        pass
+
+    def visit_BinOp(self, node):
+        self.visit(node.left)
+        self.visit(node.right)
+
+    def visit_Number(self, node):
+        pass
+
+    def visit_UnaryOp(self, node):
+        self.visit(node.factor)
+
+
+########################################################
+#                                                      #
+#  INTERPRETER                                         #
+#                                                      #
+########################################################
+
+
+class Interpreter(NodeVisitor):
+    def __init__(self, parser):
+        self.parser = parser
+        self.GLOBAL_SCOPE = {}
+
+    def visit_Program(self, node):
+        self.visit(node.block_node)
+
+    def visit_Block(self, node):
+        for declaration in node.declarations:
+            self.visit(declaration)
+        self.visit(node.compound_statement)
+
+    def visit_VarDecl(self, node):
+        pass
+
+    def visit_ProcDecl(self, node):
         pass
 
     def visit_Type(self, node):
@@ -575,8 +779,13 @@ def main():
        number     : INTEGER;
        a, b, c, x : INTEGER;
        y          : REAL;
-    
-    BEGIN {Test}
+    PROCEDURE proc1(z : INTEGER);
+    VAR
+       x, y : REAL;
+    BEGIN
+       x := y;
+    END;
+    BEGIN
        BEGIN
           number := 2;
           a := number;
@@ -585,20 +794,15 @@ def main():
        END;
        x := 11;
        y := 20 / 7 + 3.14;
-       { writeln('a = ', a); }
-       { writeln('b = ', b); }
-       { writeln('c = ', c); }
-       { writeln('number = ', number); }
-       { writeln('x = ', x); }
-       { writeln('y = ', y); }
-    END.  {Test}
+    END.
     """
 
     lexer = Lexer(text)
     parser = Parser(lexer)
-    interpreter = Interpreter(parser)
-    interpreter.interpret()
-    print(interpreter.GLOBAL_SCOPE)
+    prog = parser.parse()
+    symtab = SemanticAnalyzer()
+    symtab.visit(prog)
+    print(symtab.symtab)
 
 
 if __name__ == '__main__':

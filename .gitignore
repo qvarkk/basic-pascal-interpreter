@@ -183,3 +183,5 @@ fabric.properties
 
 # idea folder
 .idea
+
+test.py
