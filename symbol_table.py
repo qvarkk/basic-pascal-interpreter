@@ -1,32 +1,34 @@
 from collections import OrderedDict
-from symbols import BuiltinTypeSymbol
+from symbols import BuiltinTypeSymbol, Symbol
+from typing import Self
+
 
 class ScopedSymbolTable(object):
-    def __init__(self, scope_name, scope_level, enclosing_scope=None):
-        self._symbols = OrderedDict()
-        self.scope_name = scope_name
-        self.scope_level = scope_level
-        self.enclosing_scope = enclosing_scope
+    def __init__(self, scope_name: str, scope_level: int, enclosing_scope: Self | None = None) -> None:
+        self._symbols: dict[str, Symbol] = OrderedDict()
+        self.scope_name: str = scope_name
+        self.scope_level: int = scope_level
+        self.enclosing_scope: Self | None = enclosing_scope
 
-    def init_builtins(self):
+    def init_builtins(self) -> None:
         self.define(BuiltinTypeSymbol('INTEGER'))
         self.define(BuiltinTypeSymbol('REAL'))
 
-    def __str__(self):
-        lines = []
-        scope_header = '\nSCOPE (ScopedSymbolTable):'
+    def __str__(self) -> str:
+        lines: list[str] = []
+        scope_header: str = '\nSCOPE (ScopedSymbolTable):'
         lines.append(scope_header)
         lines.append('=' * len(scope_header))
 
-        scope_name_info = f'Name: {self.scope_name}'
-        scope_level_info = f'Level: {self.scope_level}'
+        scope_name_info: str = f'Name: {self.scope_name}'
+        scope_level_info: str = f'Level: {self.scope_level}'
         lines.append(scope_name_info)
         lines.append(scope_level_info)
 
-        enclosing_scope_info = f'Enclosing Scope: {self.enclosing_scope.scope_name if self.enclosing_scope else None}'
+        enclosing_scope_info: str = f'Enclosing Scope: {self.enclosing_scope.scope_name if self.enclosing_scope else None}'
         lines.append(enclosing_scope_info)
 
-        scope_symbols_header = 'Scope contents:'
+        scope_symbols_header: str = 'Scope contents:'
         lines.append(scope_symbols_header)
         lines.append('-' * len(scope_symbols_header))
 
@@ -37,11 +39,11 @@ class ScopedSymbolTable(object):
 
     __repr__ = __str__
 
-    def define(self, symbol):
+    def define(self, symbol: Symbol) -> None:
         self._symbols[symbol.name] = symbol
 
-    def lookup(self, name, current_scope_only=False):
-        symbol = self._symbols.get(name)
+    def lookup(self, name: str, current_scope_only: bool = False) -> Symbol | None:
+        symbol: Symbol = self._symbols.get(name)
 
         if symbol is not None:
             return symbol

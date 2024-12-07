@@ -1,90 +1,121 @@
-class AST(object):
-    pass
+from tokens import Token
 
 
-class Program(AST):
-    def __init__(self, name, block_node):
-        self.name = name
-        self.block = block_node
+class ASTNode(object):
+    def __str__(self) -> str:
+        return f'<AST()>'
 
 
-class Block(AST):
-    def __init__(self, declarations, compound_statement):
-        self.declarations = declarations
-        self.compound_statement = compound_statement
+class VariableNode(ASTNode):
+    def __init__(self, token: Token) -> None:
+        self.token: Token = token
+        self.name: str = token.value
+
+    def __str__(self) -> str:
+        return f'<Variable(name={self.name})>'
 
 
-class VarDecl(AST):
-    def __init__(self, var_node, type_node):
-        self.var_node = var_node
-        self.type_node = type_node
+class TypeNode(ASTNode):
+    def __init__(self, token: Token) -> None:
+        self.token: Token = token
+        self.type: str = token.value
+
+    def __str__(self) -> str:
+        return f'<Type(name={self.type})>'
 
 
-class ProcedureDecl(AST):
-    def __init__(self, name, parameters, block_node):
-        self.name = name
-        self.parameters = parameters
-        self.block_node = block_node
+class VariableDeclarationNode(ASTNode):
+    def __init__(self, variable_node: VariableNode, type_node: TypeNode) -> None:
+        self.variable_node: VariableNode = variable_node
+        self.type_node: TypeNode = type_node
+
+    def __str__(self) -> str:
+        return f'<VariableDeclaration(variable_node={self.variable_node}, type={self.type_node})>'
 
 
-class ParameterDecl(AST):
-    def __init__(self, var_node, type_node):
-        self.parameter = var_node
-        self.type_node = type_node
+class ParameterDeclarationNode(ASTNode):
+    def __init__(self, variable_node: VariableNode, type_node: TypeNode) -> None:
+        self.variable_node: VariableNode = variable_node
+        self.type_node: TypeNode = type_node
+
+    def __str__(self) -> str:
+        return f'<ParameterDeclaration(variable_node={self.variable_node}, type={self.type_node})>'
 
 
-class Type(AST):
-    def __init__(self, token):
-        self.token = token
-        self.value = token.value
+class ProcedureDeclarationNode(ASTNode):
+    def __init__(self, name: str, parameters: list[ParameterDeclarationNode] | None, block_node: 'BlockNode') -> None:
+        self.name: str = name
+        self.parameters: list[ParameterDeclarationNode] = parameters
+        self.block_node: BlockNode = block_node
 
-    def __str__(self):
-        return f'<Type(name={self.value})>'
-
-
-class Compound(AST):
-    def __init__(self):
-        self.children = []
+    def __str__(self) -> str:
+        return f'<ProcedureDeclaration(name={self.name})>'
 
 
-class Assign(AST):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.token = self.op = op
-        self.right = right
+class CompoundNode(ASTNode):
+    def __init__(self) -> None:
+        self.children: list[ASTNode] = []
+
+    def __str__(self) -> str:
+        return f'<Compound()>'
 
 
-class Var(AST):
-    def __init__(self, token):
-        self.token = token
-        self.name = token.value
+class BlockNode(ASTNode):
+    def __init__(self, declarations: list[VariableDeclarationNode | ProcedureDeclarationNode], compound_node: CompoundNode) -> None:
+        self.declarations: list[VariableDeclarationNode | ProcedureDeclarationNode] = declarations
+        self.compound_node: CompoundNode = compound_node
+
+    def __str__(self) -> str:
+        return f'<Block()>'
 
 
-class NoOp(AST):
-    pass
+class ProgramNode(ASTNode):
+    def __init__(self, name: str, block_node: BlockNode) -> None:
+        self.name: str = name
+        self.block_node: BlockNode = block_node
+
+    def __str__(self) -> str:
+        return f'<Program(name={self.name})>'
 
 
-class BinOp(AST):
-    def __init__(self, left, op, right):
-        self.left = left
-        self.token = self.op = op
-        self.right = right
+class AssignNode(ASTNode):
+    def __init__(self, left_operand: VariableNode, operator_token: Token, right_operand: ASTNode) -> None:
+        self.left_operand: VariableNode = left_operand
+        self.operator_token: Token = operator_token
+        self.right_operand: ASTNode = right_operand
 
-    def __str__(self):
-        return f'BinOp(left: {self.left}, op: {self.op}, right: {self.right})'
-
-
-class UnaryOp(AST):
-    def __init__(self, op, factor):
-        self.token = self.op = op
-        self.factor = factor
+    def __str__(self) -> str:
+        return f'<Assign({self.operator_token}, {self.left_operand}, {self.right_operand})>'
 
 
-class Number(AST):
-    def __init__(self, token):
-        self.token = token
-        self.value = token.value
+class NoOpNode(ASTNode):
+    def __str__(self) -> str:
+        return f'<NoOp()>'
 
-    def __str__(self):
-        return f'Number(value: {self.value})'
 
+class BinaryOperationNode(ASTNode):
+    def __init__(self, left_operand: ASTNode, operator_token: Token, right_operand: ASTNode) -> None:
+        self.left_operand: ASTNode = left_operand
+        self.operator_token: Token = operator_token
+        self.right_operand: ASTNode = right_operand
+
+    def __str__(self) -> str:
+        return f'BinaryOperation(left: {self.left_operand}, operator: {self.operator_token}, right: {self.right_operand})'
+
+
+class UnaryOperationNode(ASTNode):
+    def __init__(self, operator_token: Token, operand: ASTNode) -> None:
+        self.operator_token: Token = operator_token
+        self.operand: ASTNode = operand
+
+    def __str__(self) -> str:
+        return f'UnaryOperation(operator: {self.operator_token}, right: {self.operand})'
+
+
+class NumberNode(ASTNode):
+    def __init__(self, token: Token) -> None:
+        self.token: Token = token
+        self.value: int | float = token.value
+
+    def __str__(self) -> str:
+        return f'Number(value={self.value})'

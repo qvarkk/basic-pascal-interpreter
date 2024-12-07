@@ -1,221 +1,218 @@
 from ast_nodes import *
+from lexer import Lexer
 from tokens import *
 
 
 class Parser(object):
-    def __init__(self, lexer):
-        self.lexer = lexer
-        self.current_token = self.lexer.get_next_token()
+    def __init__(self, lexer: Lexer) -> None:
+        self.lexer: Lexer = lexer
+        self.current_token: Token = self.lexer.get_next_token()
 
-    def error(self):
+    def error(self) -> None:
         raise Exception('Invalid syntax')
 
-    def eat(self, type):
+    def eat(self, type: TokenType) -> None:
         if self.current_token.type == type:
             self.current_token = self.lexer.get_next_token()
         else:
             self.error()
 
-    def factor(self):
-        token = self.current_token
+    def factor(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
+        token: Token = self.current_token
 
-        if token.type == PLUS:
-            self.eat(PLUS)
-            node = UnaryOp(token, self.factor())
-            return node
-        elif token.type == MINUS:
-            self.eat(MINUS)
-            node = UnaryOp(token, self.factor())
-            return node
-        elif token.type == INTEGER_CONST:
-            self.eat(INTEGER_CONST)
-            return Number(token)
-        elif token.type == REAL_CONST:
-            self.eat(REAL_CONST)
-            return Number(token)
-        elif token.type == LPAREN:
-            self.eat(LPAREN)
-            node = self.expr()
-            self.eat(RPAREN)
-            return node
+        if token.type == TokenType.PLUS:
+            self.eat(TokenType.PLUS)
+            node: UnaryOperationNode = UnaryOperationNode(token, self.factor())
+        elif token.type == TokenType.MINUS:
+            self.eat(TokenType.MINUS)
+            node: UnaryOperationNode = UnaryOperationNode(token, self.factor())
+        elif token.type == TokenType.INTEGER_CONST:
+            self.eat(TokenType.INTEGER_CONST)
+            node: NumberNode = NumberNode(token)
+        elif token.type == TokenType.REAL_CONST:
+            self.eat(TokenType.REAL_CONST)
+            node: NumberNode = NumberNode(token)
+        elif token.type == TokenType.LPAREN:
+            self.eat(TokenType.LPAREN)
+            node: UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode = self.expr()
+            self.eat(TokenType.RPAREN)
         else:
-            node = self.variable()
-            return node
-
-    def term(self):
-        node = self.factor()
-
-        while self.current_token.type in (MUL, DIV, FLOAT_DIV):
-            token = self.current_token
-            if self.current_token.type == MUL:
-                self.eat(MUL)
-            elif self.current_token.type == DIV:
-                self.eat(DIV)
-            elif self.current_token.type == FLOAT_DIV:
-                self.eat(FLOAT_DIV)
-
-            node = BinOp(left=node, op=token, right=self.factor())
+            node: VariableNode = self.variable()
 
         return node
 
-    def expr(self):
-        node = self.term()
+    def term(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
+        node: UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode = self.factor()
 
-        while self.current_token.type in (PLUS, MINUS):
-            token = self.current_token
-            if self.current_token.type == PLUS:
-                self.eat(PLUS)
-            elif self.current_token.type == MINUS:
-                self.eat(MINUS)
+        while self.current_token.type in (TokenType.MUL, TokenType.DIV, TokenType.FLOAT_DIV):
+            token: Token = self.current_token
+            if self.current_token.type == TokenType.MUL:
+                self.eat(TokenType.MUL)
+            elif self.current_token.type == TokenType.DIV:
+                self.eat(TokenType.DIV)
+            elif self.current_token.type == TokenType.FLOAT_DIV:
+                self.eat(TokenType.FLOAT_DIV)
 
-            node = BinOp(left=node, op=token, right=self.term())
+            node: BinaryOperationNode = BinaryOperationNode(left_operand=node, operator_token=token, right_operand=self.factor())
 
         return node
 
-    def program(self):
-        self.eat(PROGRAM)
-        var_node = self.variable()
-        program_name = var_node.name
-        self.eat(SEMI)
-        block_node = self.block()
-        program_node = Program(program_name, block_node)
-        self.eat(DOT)
+    def expr(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
+        node: UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode = self.term()
+
+        while self.current_token.type in (TokenType.PLUS, TokenType.MINUS):
+            token: Token = self.current_token
+            if self.current_token.type == TokenType.PLUS:
+                self.eat(TokenType.PLUS)
+            elif self.current_token.type == TokenType.MINUS:
+                self.eat(TokenType.MINUS)
+
+            node: BinaryOperationNode = BinaryOperationNode(left_operand=node, operator_token=token, right_operand=self.term())
+
+        return node
+
+    def program(self) -> ProgramNode:
+        self.eat(TokenType.PROGRAM)
+        variable_node: VariableNode = self.variable()
+        program_name: str = variable_node.name
+        self.eat(TokenType.SEMI)
+        block_node: BlockNode = self.block()
+        program_node: ProgramNode = ProgramNode(program_name, block_node)
+        self.eat(TokenType.DOT)
         return program_node
 
-    def block(self):
-        declarations_node = self.declarations()
-        comp_stat_node = self.compound_statement()
-        block_node = Block(declarations_node, comp_stat_node)
+    def block(self) -> BlockNode:
+        declarations: list[VariableDeclarationNode | ProcedureDeclarationNode] = self.declarations()
+        compound_statement_node: CompoundNode = self.compound_statement()
+        block_node: BlockNode = BlockNode(declarations, compound_statement_node)
         return block_node
 
-    def declarations(self):
-        declarations = []
-        procedures = []
+    def declarations(self) -> list[VariableDeclarationNode | ProcedureDeclarationNode]:
+        declarations: list[VariableDeclarationNode | ProcedureDeclarationNode] = []
 
-        while self.current_token.type == VAR:
-            self.eat(VAR)
+        while self.current_token.type == TokenType.VAR:
+            self.eat(TokenType.VAR)
 
-            while self.current_token.type == ID:
-                var_decl_node = self.variable_declaration()
-                declarations.extend(var_decl_node)
-                self.eat(SEMI)
+            while self.current_token.type == TokenType.ID:
+                variable_declarations: list[VariableDeclarationNode] = self.variable_declarations()
+                declarations.extend(variable_declarations)
+                self.eat(TokenType.SEMI)
 
-        while self.current_token.type == PROCEDURE:
-            self.eat(PROCEDURE)
-            procedure_name = self.current_token.value
-            self.eat(ID)
+        while self.current_token.type == TokenType.PROCEDURE:
+            self.eat(TokenType.PROCEDURE)
+            procedure_name: str = self.current_token.value
+            self.eat(TokenType.ID)
 
-            parameters = None
-            if self.current_token.type == LPAREN:
+            parameters: list[ParameterDeclarationNode] | None = None
+            if self.current_token.type == TokenType.LPAREN:
                 parameters = self.formal_parameters_list()
 
-            self.eat(SEMI)
-            block_node = self.block()
-            procedures.append(ProcedureDecl(procedure_name, parameters, block_node))
-            self.eat(SEMI)
+            self.eat(TokenType.SEMI)
+            block_node: BlockNode = self.block()
+            declarations.append(ProcedureDeclarationNode(procedure_name, parameters, block_node))
+            self.eat(TokenType.SEMI)
 
-        declarations.extend(procedures)
         return declarations
 
-    def formal_parameters_list(self):
-        self.eat(LPAREN)
-        parameters = self.formal_parameters()
-        self.eat(RPAREN)
+    def formal_parameters_list(self) -> list[ParameterDeclarationNode]:
+        self.eat(TokenType.LPAREN)
+        parameters: list[ParameterDeclarationNode] = self.formal_parameters()
+        self.eat(TokenType.RPAREN)
         return parameters
 
-    def formal_parameters(self):
-        parameters = []
+    def formal_parameters(self) -> list[ParameterDeclarationNode]:
+        parameters: list[ParameterDeclarationNode] = []
 
-        while self.current_token.type != RPAREN:
+        while self.current_token.type != TokenType.RPAREN:
             parameters.extend(self.parameter_declaration())
-            if self.current_token.type != RPAREN:
-                self.eat(SEMI)
+            if self.current_token.type != TokenType.RPAREN:
+                self.eat(TokenType.SEMI)
 
         return parameters
 
-    def parameter_declaration(self):
-        var_nodes = [Var(self.current_token)]
-        self.eat(ID)
+    def parameter_declaration(self) -> list[ParameterDeclarationNode]:
+        variable_nodes: list[VariableNode] = [VariableNode(self.current_token)]
+        self.eat(TokenType.ID)
 
-        while self.current_token.type == COMMA:
-            self.eat(COMMA)
-            var_nodes.append(Var(self.current_token))
-            self.eat(ID)
+        while self.current_token.type == TokenType.COMMA:
+            self.eat(TokenType.COMMA)
+            variable_nodes.append(VariableNode(self.current_token))
+            self.eat(TokenType.ID)
 
-        self.eat(COLON)
-        type_node = self.type_spec()
-        parameters = [ParameterDecl(var_node, type_node) for var_node in var_nodes]
+        self.eat(TokenType.COLON)
+        type_node: TypeNode = self.type_spec()
+        parameters: list[ParameterDeclarationNode] = [ParameterDeclarationNode(var_node, type_node) for var_node in variable_nodes]
         return parameters
 
-    def variable_declaration(self):
-        var_nodes = [Var(self.current_token)]
-        self.eat(ID)
+    def variable_declarations(self) -> list[VariableDeclarationNode]:
+        variable_nodes: list[VariableNode] = [VariableNode(self.current_token)]
+        self.eat(TokenType.ID)
 
-        while self.current_token.type == COMMA:
-            self.eat(COMMA)
-            var_nodes.append(Var(self.current_token))
-            self.eat(ID)
+        while self.current_token.type == TokenType.COMMA:
+            self.eat(TokenType.COMMA)
+            variable_nodes.append(VariableNode(self.current_token))
+            self.eat(TokenType.ID)
 
-        self.eat(COLON)
-        type_node = self.type_spec()
-        var_declarations = [VarDecl(var_node, type_node) for var_node in var_nodes]
-        return var_declarations
+        self.eat(TokenType.COLON)
+        type_node: TypeNode = self.type_spec()
+        variable_declarations: list[VariableDeclarationNode] = [VariableDeclarationNode(variable_node, type_node) for variable_node in variable_nodes]
+        return variable_declarations
 
-    def type_spec(self):
-        token = self.current_token
+    def type_spec(self) -> TypeNode:
+        token: Token = self.current_token
 
-        if self.current_token.type == INTEGER:
-            self.eat(INTEGER)
+        if self.current_token.type == TokenType.INTEGER:
+            self.eat(TokenType.INTEGER)
         else:
-            self.eat(REAL)
+            self.eat(TokenType.REAL)
 
-        node = Type(token)
+        node: TypeNode = TypeNode(token)
         return node
 
-    def compound_statement(self):
-        self.eat(BEGIN)
-        nodes = self.statement_list()
-        self.eat(END)
+    def compound_statement(self) -> CompoundNode:
+        self.eat(TokenType.BEGIN)
+        nodes: list[ASTNode] = self.statement_list()
+        self.eat(TokenType.END)
 
-        root = Compound()
+        root: CompoundNode = CompoundNode()
         for node in nodes:
             root.children.append(node)
 
         return root
 
-    def statement_list(self):
-        node = self.statement()
+    def statement_list(self) -> list[ASTNode]:
+        node: CompoundNode | AssignNode | NoOpNode = self.statement()
 
-        results = [node]
+        results: list[CompoundNode | AssignNode | NoOpNode] = [node]
 
-        while self.current_token.type is SEMI:
-            self.eat(SEMI)
+        while self.current_token.type is TokenType.SEMI:
+            self.eat(TokenType.SEMI)
             results.append(self.statement())
 
         return results
 
-    def statement(self):
-        if self.current_token.type is BEGIN:
+    def statement(self) -> CompoundNode | AssignNode | NoOpNode:
+        if self.current_token.type is TokenType.BEGIN:
             return self.compound_statement()
-        elif self.current_token.type is ID:
+        elif self.current_token.type is TokenType.ID:
             return self.assignment_statement()
         else:
             return self.empty()
 
-    def assignment_statement(self):
-        left = self.variable()
-        token = self.current_token
-        self.eat(ASSIGN)
-        right = self.expr()
-        return Assign(left, token, right)
+    def assignment_statement(self) -> AssignNode:
+        left_operand: VariableNode = self.variable()
+        operator_token: Token = self.current_token
+        self.eat(TokenType.ASSIGN)
+        right_operand: ASTNode = self.expr()
+        return AssignNode(left_operand, operator_token, right_operand)
 
-    def empty(self):
-        return NoOp()
+    def empty(self) -> NoOpNode:
+        return NoOpNode()
 
-    def variable(self):
-        token = self.current_token
-        self.eat(ID)
-        return Var(token)
+    def variable(self) -> VariableNode:
+        token: Token = self.current_token
+        self.eat(TokenType.ID)
+        return VariableNode(token)
 
     def parse(self):
         """
@@ -269,7 +266,7 @@ class Parser(object):
             variable              : ID
         """
         node = self.program()
-        if self.current_token.type is not EOF:
+        if self.current_token.type is not TokenType.EOF:
             self.error()
 
         return node

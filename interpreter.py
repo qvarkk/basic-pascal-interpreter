@@ -13,7 +13,7 @@ class Interpreter(NodeVisitor):
     def visit_Block(self, node):
         for declaration in node.declarations:
             self.visit(declaration)
-        self.visit(node.compound_statement)
+        self.visit(node.compound_node)
 
     def visit_VarDecl(self, node):
         pass
@@ -26,8 +26,8 @@ class Interpreter(NodeVisitor):
             self.visit(child)
 
     def visit_Assign(self, node):
-        var_name = node.left.name
-        self.GLOBAL_SCOPE[var_name] = self.visit(node.right)
+        var_name = node.left_operand.name
+        self.GLOBAL_SCOPE[var_name] = self.visit(node.right_operand)
 
     def visit_Var(self, node):
         var_name = node.name
@@ -41,24 +41,24 @@ class Interpreter(NodeVisitor):
         pass
 
     def visit_BinOp(self, node):
-        if node.op.type == PLUS:
-            return self.visit(node.left) + self.visit(node.right)
-        elif node.op.type == MINUS:
-            return self.visit(node.left) - self.visit(node.right)
-        elif node.op.type == MUL:
-            return self.visit(node.left) * self.visit(node.right)
-        elif node.op.type == DIV:
-            return self.visit(node.left) // self.visit(node.right)
-        elif node.op.type == FLOAT_DIV:
-            return float(self.visit(node.left) / self.visit(node.right))
+        if node.operator_token.type == PLUS:
+            return self.visit(node.left_operand) + self.visit(node.right_operand)
+        elif node.operator_token.type == MINUS:
+            return self.visit(node.left_operand) - self.visit(node.right_operand)
+        elif node.operator_token.type == MUL:
+            return self.visit(node.left_operand) * self.visit(node.right_operand)
+        elif node.operator_token.type == DIV:
+            return self.visit(node.left_operand) // self.visit(node.right_operand)
+        elif node.operator_token.type == FLOAT_DIV:
+            return float(self.visit(node.left_operand) / self.visit(node.right_operand))
 
     def visit_Number(self, node):
         return node.value
 
     def visit_UnaryOp(self, node):
-        if node.op.type == PLUS:
+        if node.operator_token.type == PLUS:
             return +self.visit(node.factor)
-        elif node.op.type == MINUS:
+        elif node.operator_token.type == MINUS:
             return -self.visit(node.factor)
 
     def interpret(self):

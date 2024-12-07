@@ -1,36 +1,40 @@
-# OPERATORS DEFINITIONS
-PLUS, MINUS, MUL, FLOAT_DIV, LPAREN, RPAREN, ASSIGN = (
-    'PLUS', 'MINUS', 'MUL', 'FLOAT_DIV', 'LPAREN', 'RPAREN', 'ASSIGN'
-)
+from enum import StrEnum
 
-# CONSTANTS DEFINITIONS
-INTEGER_CONST, REAL_CONST, ID = (
-    'INTEGER_CONST', 'REAL_CONST', 'ID'
-)
 
-# RESERVED KEYWORDS DEFINITIONS
-PROGRAM, VAR, BEGIN, END, DIV, PROCEDURE = (
-    'program', 'var', 'begin', 'end', 'div', 'procedure'
-)
+class TokenType(StrEnum):
+    # OPERATORS DEFINITIONS
+    PLUS, MINUS, MUL, FLOAT_DIV, LPAREN, RPAREN, ASSIGN = (
+        'PLUS', 'MINUS', 'MUL', 'FLOAT_DIV', 'LPAREN', 'RPAREN', 'ASSIGN'
+    )
 
-# TYPES RESERVED KEYWORDS DEFINITIONS
-INTEGER, REAL = (
-    'integer', 'real'
-)
+    # CONSTANTS DEFINITIONS
+    INTEGER_CONST, REAL_CONST, ID = (
+        'INTEGER_CONST', 'REAL_CONST', 'ID'
+    )
 
-# META SYMBOLS DEFINITIONS
-DOT, SEMI, COLON, COMMA, EOF = (
-   'DOT', 'SEMI', 'COLON', 'COMMA', 'EOF'
-)
+    # RESERVED KEYWORDS DEFINITIONS
+    PROGRAM, VAR, BEGIN, END, DIV, PROCEDURE = (
+        'program', 'var', 'begin', 'end', 'div', 'procedure'
+    )
+
+    # TYPES RESERVED KEYWORDS DEFINITIONS
+    INTEGER, REAL = (
+        'integer', 'real'
+    )
+
+    # META SYMBOLS DEFINITIONS
+    DOT, SEMI, COLON, COMMA, EOF = (
+        'DOT', 'SEMI', 'COLON', 'COMMA', 'EOF'
+    )
 
 
 class Token(object):
-    def __init__(self, type, value):
-        self.type = type
-        self.value = value
+    def __init__(self, type: TokenType, value: str | int | float | None) -> None:
+        self.type: TokenType = type
+        self.value: str | int | float | None = value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Token({self.type}: {self.value})'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()

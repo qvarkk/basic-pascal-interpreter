@@ -34,7 +34,6 @@ def main():
     prog = parser.parse()
     symtab = SemanticAnalyzer()
     symtab.visit(prog)
-    print(symtab.current_scope)
 
 
 if __name__ == '__main__':
