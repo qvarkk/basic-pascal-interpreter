@@ -30,6 +30,11 @@ class TokenType(StrEnum):
 
 
 class Token(object):
+    """ The smallest lexeme that lexer can recognize.
+
+        :parameter type: Type of the token
+        :parameter value: Value of the token
+    """
     def __init__(self, type: TokenType, value: TokenValue) -> None:
         self.type: TokenType = type
         self.value: TokenValue = value

@@ -26,6 +26,7 @@ class TypeNode(ASTNode):
 
 
 class VariableDeclarationNode(ASTNode):
+
     def __init__(self, variable_node: VariableNode, type_node: TypeNode) -> None:
         self.variable_node: VariableNode = variable_node
         self.type_node: TypeNode = type_node

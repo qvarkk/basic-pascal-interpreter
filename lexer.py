@@ -2,15 +2,25 @@ from tokens import *
 
 
 class Lexer(object):
+    """ Breaks given pascal program into a series of tokens.
+
+        :parameter text: pascal program in string representation.
+    """
     def __init__(self, text: str) -> None:
         self.pos: int = 0
         self.text: str = text
         self.current_character: str | None = text[self.pos]
 
     def error(self) -> None:
-        raise Exception('Invalid character')
+        """ Raises SyntaxError when called
+            :raises SyntaxError:
+        """
+        raise SyntaxError('Invalid character')
 
     def peek(self) -> str | None:
+        """ Peeks at the next character if possible.
+            :returns: Peeked character if there is one, None otherwise.
+        """
         peek_pos: int = self.pos + 1
         if peek_pos <= len(self.text) - 1:
             return self.text[peek_pos]
@@ -18,6 +28,8 @@ class Lexer(object):
             return None
 
     def step(self) -> None:
+        """ Updates the current character to the next character or to None if reached end of the program string.
+        """
         if self.pos < len(self.text) - 1:
             self.pos += 1
             self.current_character = self.text[self.pos]
@@ -25,10 +37,14 @@ class Lexer(object):
             self.current_character = None
 
     def skip_whitespace(self) -> None:
+        """ Steps through the program string until non-whitespace is encountered.
+        """
         while self.current_character is not None and self.current_character.isspace():
             self.step()
 
     def skip_comment(self) -> None:
+        """ Steps through the program string until the end of a comment is encountered.
+        """
         while self.current_character is not None and self.current_character != '}':
             self.step()
         self.step()
@@ -45,6 +61,10 @@ class Lexer(object):
     }
 
     def id(self) -> Token:
+        """ Reads identifiers.
+
+            :returns: ID Token if it's not a reserved keyword, otherwise the reserved keyword token.
+        """
         result: str = ''
 
         while self.current_character is not None and self.current_character.isalnum():
@@ -57,6 +77,10 @@ class Lexer(object):
         return self.RESERVED_KEYWORDS.get(result, Token(TokenType.ID, result))
 
     def number(self) -> Token:
+        """ Reads numbers.
+
+            :returns: INTEGER_CONST Token if number is integer, otherwise REAL_CONST Token if number is float.
+        """
         result: str = ''
         while self.current_character is not None and self.current_character.isdigit():
             result += self.current_character
@@ -77,6 +101,11 @@ class Lexer(object):
         return token
 
     def get_next_token(self) -> Token:
+        """ Steps through the program string until the next token is encountered.
+
+            :returns: Next token encountered in the program string.
+            :raises SyntaxError: If encountered not recognizable character
+        """
         while self.current_character is not None:
             if self.current_character.isspace():
                 self.skip_whitespace()
