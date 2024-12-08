@@ -1,4 +1,5 @@
 from tokens import Token
+from _typing import TokenValue
 
 
 class ASTNode(object):
@@ -9,7 +10,7 @@ class ASTNode(object):
 class VariableNode(ASTNode):
     def __init__(self, token: Token) -> None:
         self.token: Token = token
-        self.name: str = token.value
+        self.name: TokenValue = token.value
 
     def __str__(self) -> str:
         return f'<Variable(name={self.name})>'
@@ -18,7 +19,7 @@ class VariableNode(ASTNode):
 class TypeNode(ASTNode):
     def __init__(self, token: Token) -> None:
         self.token: Token = token
-        self.type: str = token.value
+        self.type: TokenValue = token.value
 
     def __str__(self) -> str:
         return f'<Type(name={self.type})>'
@@ -45,7 +46,7 @@ class ParameterDeclarationNode(ASTNode):
 class ProcedureDeclarationNode(ASTNode):
     def __init__(self, name: str, parameters: list[ParameterDeclarationNode] | None, block_node: 'BlockNode') -> None:
         self.name: str = name
-        self.parameters: list[ParameterDeclarationNode] = parameters
+        self.parameters: list[ParameterDeclarationNode] | None = parameters
         self.block_node: BlockNode = block_node
 
     def __str__(self) -> str:
@@ -115,7 +116,7 @@ class UnaryOperationNode(ASTNode):
 class NumberNode(ASTNode):
     def __init__(self, token: Token) -> None:
         self.token: Token = token
-        self.value: int | float = token.value
+        self.value: TokenValue = token.value
 
     def __str__(self) -> str:
         return f'Number(value={self.value})'

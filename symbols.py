@@ -1,10 +1,10 @@
-from typing import Self
+from typing import Self, Type, Optional
 
 
 class Symbol(object):
-    def __init__(self, name: str, type: Self | any = None) -> None:
+    def __init__(self, name: str, type: Optional['Symbol'] = None) -> None:
         self.name: str = name
-        self.type: any = type
+        self.type: Optional['Symbol'] = type
 
 
 class BuiltinTypeSymbol(Symbol):
@@ -18,7 +18,7 @@ class BuiltinTypeSymbol(Symbol):
 
 
 class VariableSymbol(Symbol):
-    def __init__(self, name: str, type: Symbol) -> None:
+    def __init__(self, name: str, type: Optional[Symbol]) -> None:
         super().__init__(name, type)
 
     def __str__(self):
@@ -28,11 +28,11 @@ class VariableSymbol(Symbol):
 
 
 class ProcedureSymbol(Symbol):
-    def __init__(self, name: str, parameters: list[Symbol] | None = None):
+    def __init__(self, name: str, parameters: Optional[list[Symbol]] = None):
         super().__init__(name)
         self.parameters: list[Symbol] = parameters if parameters is not None else []
 
     def __str__(self):
-        return f'<ProcedureSymbol(name={self.name}, parameters={self.parameters})>'
+        return f'<ProcedureSymbol(name={self.name})>'
 
     __repr__ = __str__

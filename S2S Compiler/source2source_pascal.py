@@ -15,6 +15,9 @@ class Source2SourcePascalParser(NodeVisitor):
         self.file.close()
 
     def get_tabulation(self, offset: int = 0) -> str:
+        if self.current_scope is None:
+            raise Exception(f'Unexpected error happened')
+
         return '\t' * (self.current_scope.scope_level + offset)
 
     def add_line_to_output(self, line: str) -> None:
@@ -62,9 +65,12 @@ class Source2SourcePascalParser(NodeVisitor):
         self.visit(node.compound_node)
 
     def visit_VariableDeclarationNode(self, node: VariableDeclarationNode) -> None:
-        type_name: str = node.type_node.type
+        if self.current_scope is None:
+            raise Exception(f'Unexpected error happened')
+
+        type_name: str = str(node.type_node.type)
         type_symbol: BuiltinTypeSymbol | None = self.current_scope.lookup(type_name)
-        var_name: str = node.variable_node.name + str(self.current_scope.scope_level)
+        var_name: str = str(node.variable_node.name) + str(self.current_scope.scope_level)
 
         if self.current_scope.lookup(var_name, current_scope_only=True) is not None:
             raise Exception(f'Duplicate identifier {var_name} found')
@@ -79,6 +85,9 @@ class Source2SourcePascalParser(NodeVisitor):
         self.add_line_to_output(var_line)
 
     def visit_ProcedureDeclarationNode(self, node: ProcedureDeclarationNode) -> None:
+        if self.current_scope is None:
+            raise Exception(f'Unexpected error happened')
+
         procedure_name: str = node.name + str(self.current_scope.scope_level)
         procedure_symbol: ProcedureSymbol = ProcedureSymbol(procedure_name)
         self.current_scope.define(procedure_symbol)
@@ -92,16 +101,18 @@ class Source2SourcePascalParser(NodeVisitor):
         self.current_scope = procedure_scope
 
         parameters_lines: list[str] = []
-        for parameter in node.parameters:
-            type_symbol: BuiltinTypeSymbol | None = self.current_scope.lookup(parameter.type_node.type)
-            param_name: str = parameter.variable_node.name
-            param_symbol: VariableSymbol = VariableSymbol(param_name + str(self.current_scope.scope_level), type_symbol)
-            self.current_scope.define(param_symbol)
-            procedure_symbol.parameters.append(param_symbol)
-            parameters_lines.append('{param_name} : {type_name}'.format(
-                param_name=param_name + str(self.current_scope.scope_level),
-                type_name=type_symbol.name
-            ))
+
+        if node.parameters is not None:
+            for parameter in node.parameters:
+                type_symbol: BuiltinTypeSymbol | None = self.current_scope.lookup(parameter.type_node.type)
+                param_name: str = parameter.variable_node.name
+                param_symbol: VariableSymbol = VariableSymbol(param_name + str(self.current_scope.scope_level), type_symbol)
+                self.current_scope.define(param_symbol)
+                procedure_symbol.parameters.append(param_symbol)
+                parameters_lines.append('{param_name} : {type_name}'.format(
+                    param_name=param_name + str(self.current_scope.scope_level),
+                    type_name=type_symbol.name
+                ))
 
         self.add_line_to_output('')
         self.add_line_to_output('{tabulation}procedure {procedure_name}({parameters});'.format(
@@ -120,7 +131,7 @@ class Source2SourcePascalParser(NodeVisitor):
 
         self.current_scope = self.current_scope.enclosing_scope
 
-    def visit_CompoundNode(self, node: CompoundNode):
+    def visit_CompoundNode(self, node: CompoundNode) -> None:
         for child in node.children:
             child_string: str = self.visit(child)
             if child_string is not None:
@@ -137,6 +148,9 @@ class Source2SourcePascalParser(NodeVisitor):
         return f'{left} {operator} {right};'
 
     def visit_VariableNode(self, node: VariableNode) -> str:
+        if self.current_scope is None:
+            raise Exception(f'Unexpected error happened')
+
         var: VariableSymbol | None = None
 
         for i in range(self.current_scope.scope_level, 0, -1):

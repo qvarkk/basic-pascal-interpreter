@@ -43,7 +43,7 @@ class ScopedSymbolTable(object):
         self._symbols[symbol.name] = symbol
 
     def lookup(self, name: str, current_scope_only: bool = False) -> Symbol | None:
-        symbol: Symbol = self._symbols.get(name)
+        symbol: Symbol | None = self._symbols.get(name)
 
         if symbol is not None:
             return symbol
@@ -53,3 +53,5 @@ class ScopedSymbolTable(object):
 
         if self.enclosing_scope is not None:
             return self.enclosing_scope.lookup(name)
+
+        return None

@@ -1,4 +1,5 @@
 from enum import StrEnum
+from _typing import TokenValue
 
 
 class TokenType(StrEnum):
@@ -29,9 +30,9 @@ class TokenType(StrEnum):
 
 
 class Token(object):
-    def __init__(self, type: TokenType, value: str | int | float | None) -> None:
+    def __init__(self, type: TokenType, value: TokenValue) -> None:
         self.type: TokenType = type
-        self.value: str | int | float | None = value
+        self.value: TokenValue = value
 
     def __str__(self) -> str:
         return f'Token({self.type}: {self.value})'

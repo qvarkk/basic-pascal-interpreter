@@ -1,6 +1,7 @@
 from ast_nodes import *
 from lexer import Lexer
 from tokens import *
+from _typing import ExpressionNode, DeclarationNode, StatementNode
 
 
 class Parser(object):
@@ -17,7 +18,7 @@ class Parser(object):
         else:
             self.error()
 
-    def factor(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
+    def factor(self) -> ExpressionNode:
         token: Token = self.current_token
 
         if token.type == TokenType.PLUS:
@@ -41,8 +42,8 @@ class Parser(object):
 
         return node
 
-    def term(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
-        node: UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode = self.factor()
+    def term(self) -> ExpressionNode:
+        node: ExpressionNode = self.factor()
 
         while self.current_token.type in (TokenType.MUL, TokenType.DIV, TokenType.FLOAT_DIV):
             token: Token = self.current_token
@@ -57,8 +58,8 @@ class Parser(object):
 
         return node
 
-    def expr(self) -> UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode:
-        node: UnaryOperationNode | BinaryOperationNode | VariableNode | NumberNode = self.term()
+    def expr(self) -> ExpressionNode:
+        node: ExpressionNode = self.term()
 
         while self.current_token.type in (TokenType.PLUS, TokenType.MINUS):
             token: Token = self.current_token
@@ -74,7 +75,7 @@ class Parser(object):
     def program(self) -> ProgramNode:
         self.eat(TokenType.PROGRAM)
         variable_node: VariableNode = self.variable()
-        program_name: str = variable_node.name
+        program_name: str = str(variable_node.name)
         self.eat(TokenType.SEMI)
         block_node: BlockNode = self.block()
         program_node: ProgramNode = ProgramNode(program_name, block_node)
@@ -82,13 +83,13 @@ class Parser(object):
         return program_node
 
     def block(self) -> BlockNode:
-        declarations: list[VariableDeclarationNode | ProcedureDeclarationNode] = self.declarations()
+        declarations: list[DeclarationNode] = self.declarations()
         compound_statement_node: CompoundNode = self.compound_statement()
         block_node: BlockNode = BlockNode(declarations, compound_statement_node)
         return block_node
 
-    def declarations(self) -> list[VariableDeclarationNode | ProcedureDeclarationNode]:
-        declarations: list[VariableDeclarationNode | ProcedureDeclarationNode] = []
+    def declarations(self) -> list[DeclarationNode]:
+        declarations: list[DeclarationNode] = []
 
         while self.current_token.type == TokenType.VAR:
             self.eat(TokenType.VAR)
@@ -100,7 +101,7 @@ class Parser(object):
 
         while self.current_token.type == TokenType.PROCEDURE:
             self.eat(TokenType.PROCEDURE)
-            procedure_name: str = self.current_token.value
+            procedure_name: str = str(self.current_token.value)
             self.eat(TokenType.ID)
 
             parameters: list[ParameterDeclarationNode] | None = None
@@ -171,7 +172,7 @@ class Parser(object):
 
     def compound_statement(self) -> CompoundNode:
         self.eat(TokenType.BEGIN)
-        nodes: list[ASTNode] = self.statement_list()
+        nodes: list[StatementNode] = self.statement_list()
         self.eat(TokenType.END)
 
         root: CompoundNode = CompoundNode()
@@ -180,10 +181,10 @@ class Parser(object):
 
         return root
 
-    def statement_list(self) -> list[ASTNode]:
-        node: CompoundNode | AssignNode | NoOpNode = self.statement()
+    def statement_list(self) -> list[StatementNode]:
+        node: StatementNode = self.statement()
 
-        results: list[CompoundNode | AssignNode | NoOpNode] = [node]
+        results: list[StatementNode] = [node]
 
         while self.current_token.type is TokenType.SEMI:
             self.eat(TokenType.SEMI)
@@ -191,7 +192,7 @@ class Parser(object):
 
         return results
 
-    def statement(self) -> CompoundNode | AssignNode | NoOpNode:
+    def statement(self) -> StatementNode:
         if self.current_token.type is TokenType.BEGIN:
             return self.compound_statement()
         elif self.current_token.type is TokenType.ID:

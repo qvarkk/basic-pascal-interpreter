@@ -5,7 +5,7 @@ class Lexer(object):
     def __init__(self, text: str) -> None:
         self.pos: int = 0
         self.text: str = text
-        self.current_character: str = text[self.pos]
+        self.current_character: str | None = text[self.pos]
 
     def error(self) -> None:
         raise Exception('Invalid character')
