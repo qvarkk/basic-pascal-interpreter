@@ -1,5 +1,8 @@
+from typing import TypeAlias
 from tokens import Token
-from _typing import TokenValue
+
+
+TokenValue: TypeAlias = str | int | float | None
 
 
 class ASTNode(object):

@@ -1,7 +1,7 @@
 from ast_nodes import *
 from lexer import Lexer
 from tokens import *
-from _typing import ExpressionNode, DeclarationNode, StatementNode
+from type_values import ExpressionNode, DeclarationNode, StatementNode
 
 
 class Parser(object):

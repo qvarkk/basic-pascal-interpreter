@@ -66,6 +66,8 @@ class SemanticAnalyzer(NodeVisitor):
                 procedure_symbol.parameters.append(param_symbol)
 
         self.visit(node.block_node)
+        print(self.current_scope)
+
         self.current_scope = self.current_scope.enclosing_scope
 
     def visit_CompoundNode(self, node: CompoundNode) -> None:

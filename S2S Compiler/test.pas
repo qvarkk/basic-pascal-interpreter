@@ -10,7 +10,7 @@ program Main;
 
          procedure Gamma(c : integer);
             var x : integer;
-         begin { Gamma }
+         begin; { Gamma }
             x := a + b + c + x + y + z;
          end;  { Gamma }
 

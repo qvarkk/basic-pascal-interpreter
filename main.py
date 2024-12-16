@@ -6,27 +6,38 @@ from semantic_analyzer import SemanticAnalyzer
 
 def main():
     text = """
-    PROGRAM Test;
-    VAR
-       number     : INTEGER;
-       a, b, c, x : INTEGER;
-       y          : REAL;
-    PROCEDURE proc1(z : INTEGER);
-    VAR
-       x, y : REAL;
-    BEGIN
-       x := a;
-    END;
-    BEGIN
-       BEGIN
-          number := 2;
-          a := number;
-          b := 10 * a + 10 * number DIV 4;
-          c := a - - b
-       END;
-       x := 11;
-       y := 20 / 7 + 3.14;
-    END.
+program Main;
+   var b, x, y : real;
+   var z : integer;
+
+   procedure AlphaA(a : integer);
+      var b : integer;
+
+      procedure Beta(c : integer);
+         var y : integer;
+
+         procedure Gamma(c : integer);
+            var x : integer;
+         begin { Gamma }
+            x := a + b + c + x + y + z;
+         end;  { Gamma }
+
+      begin { Beta }
+
+      end;  { Beta }
+
+   begin { AlphaA }
+
+   end;  { AlphaA }
+
+   procedure AlphaB(a : integer);
+      var c : real;
+   begin { AlphaB }
+      c := a + b;
+   end;  { AlphaB }
+
+begin { Main }
+end.  { Main }
     """
 
     lexer = Lexer(text)

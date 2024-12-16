@@ -1,5 +1,8 @@
 from enum import StrEnum
-from _typing import TokenValue
+from typing import TypeAlias
+
+
+TokenValue: TypeAlias = str | int | float | None
 
 
 class TokenType(StrEnum):
