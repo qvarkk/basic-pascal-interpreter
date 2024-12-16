@@ -72,9 +72,10 @@ class Lexer(object):
             self.step()
 
         # remove case sensitivity
-        result = result.lower()
+        lower_result: str = result.lower()
+        result_token: Token = self.RESERVED_KEYWORDS.get(lower_result, Token(TokenType.ID, result))
 
-        return self.RESERVED_KEYWORDS.get(result, Token(TokenType.ID, result))
+        return result_token
 
     def number(self) -> Token:
         """ Reads numbers.
