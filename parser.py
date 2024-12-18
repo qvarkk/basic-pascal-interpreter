@@ -1,4 +1,5 @@
 from ast_nodes import *
+from errors import ParserError, ErrorCode
 from lexer import Lexer
 from tokens import *
 from type_values import ExpressionNode, DeclarationNode, StatementNode
@@ -13,11 +14,11 @@ class Parser(object):
         self.lexer: Lexer = lexer
         self.current_token: Token = self.lexer.get_next_token()
 
-    def error(self) -> None:
-        """ Raises SyntaxError when called
-            :raises SyntaxError:
+    def error(self, error_code: ErrorCode) -> None:
+        """ Raises ParserError when called
+            :raises ParserError:
         """
-        raise SyntaxError('Invalid syntax')
+        raise ParserError(error_code=error_code, token=self.current_token)
 
     def eat(self, type: TokenType) -> None:
         """ Checks type of the current token and goes to next token.
@@ -28,7 +29,7 @@ class Parser(object):
         if self.current_token.type == type:
             self.current_token = self.lexer.get_next_token()
         else:
-            self.error()
+            self.error(ErrorCode.UNEXPECTED_TOKEN)
 
     def program(self) -> ProgramNode:
         """ Parses program rule:
@@ -341,6 +342,6 @@ class Parser(object):
         """
         node = self.program()
         if self.current_token.type is not TokenType.EOF:
-            self.error()
+            self.error(ErrorCode.UNEXPECTED_ERROR)
 
         return node

@@ -1,35 +1,36 @@
 from enum import StrEnum
-from typing import TypeAlias
-
+from typing import TypeAlias, Optional
 
 TokenValue: TypeAlias = str | int | float | None
 
 
 class TokenType(StrEnum):
-    # OPERATORS DEFINITIONS
-    PLUS, MINUS, MUL, FLOAT_DIV, LPAREN, RPAREN, ASSIGN = (
-        'PLUS', 'MINUS', 'MUL', 'FLOAT_DIV', 'LPAREN', 'RPAREN', 'ASSIGN'
-    )
-
-    # CONSTANTS DEFINITIONS
-    INTEGER_CONST, REAL_CONST, ID = (
-        'INTEGER_CONST', 'REAL_CONST', 'ID'
-    )
-
-    # RESERVED KEYWORDS DEFINITIONS
-    PROGRAM, VAR, BEGIN, END, DIV, PROCEDURE = (
-        'program', 'var', 'begin', 'end', 'div', 'procedure'
-    )
-
-    # TYPES RESERVED KEYWORDS DEFINITIONS
-    INTEGER, REAL = (
-        'integer', 'real'
-    )
-
-    # META SYMBOLS DEFINITIONS
-    DOT, SEMI, COLON, COMMA, EOF = (
-        'DOT', 'SEMI', 'COLON', 'COMMA', 'EOF'
-    )
+    # single-character types
+    PLUS            = '+'
+    MINUS           = '-'
+    MUL             = '*'
+    FLOAT_DIV       = '/'
+    LPAREN          = '('
+    RPAREN          = ')'
+    DOT             = '.'
+    SEMI            = ';'
+    COLON           = ':'
+    COMMA           = ','
+    # reserved keywords
+    PROGRAM         = 'PROGRAM'     # has to be first in order for Lexer._init_reserved_keywords to work
+    VAR             = 'VAR'
+    INTEGER         = 'INTEGER'
+    REAL            = 'REAL'
+    DIV             = 'DIV'
+    PROCEDURE       = 'PROCEDURE'
+    BEGIN           = 'BEGIN'
+    END             = 'END'         # has to be last for the same reason
+    # miscellaneous
+    ID              = 'ID'
+    INTEGER_CONST   = 'INTEGER_CONST'
+    REAL_CONST      = 'REAL_CONST'
+    ASSIGN          = ':='
+    EOF             = 'EOF'
 
 
 class Token(object):
@@ -38,12 +39,18 @@ class Token(object):
         :parameter type: Type of the token
         :parameter value: Value of the token
     """
-    def __init__(self, type: TokenType, value: TokenValue) -> None:
+    def __init__(self, type: TokenType, value: Optional[TokenValue] = None, line_number: int = 0) -> None:
         self.type: TokenType = type
-        self.value: TokenValue = value
+
+        if value is None:
+            self.value: TokenValue = type
+        else:
+            self.value: TokenValue = value
+
+        self.line_number: int = line_number
 
     def __str__(self) -> str:
-        return f'Token({self.type}: {self.value})'
+        return f'<Token(type={self.type.name}, value=\'{self.value}\'>'
 
     def __repr__(self) -> str:
         return self.__str__()

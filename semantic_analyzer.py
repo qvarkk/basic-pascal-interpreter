@@ -1,12 +1,23 @@
+from typing import Optional
+
 from ast_nodes import *
+from errors import ErrorCode, SemanticError
 from node_visitor import NodeVisitor
 from symbols import VariableSymbol, ProcedureSymbol, Symbol
 from symbol_table import ScopedSymbolTable
 
 
 class SemanticAnalyzer(NodeVisitor):
-    def __init__(self) -> None:
+    def __init__(self, debug: Optional[bool] = False) -> None:
+        self.debug = debug
         self.current_scope: ScopedSymbolTable | None = None
+
+    def log(self, message: str) -> None:
+        if self.debug:
+            print(message)
+
+    def error(self, error_code: ErrorCode, variable_node: Optional[VariableNode] = None) -> None:
+        raise SemanticError(error_code, variable_token=variable_node.token)
 
     def visit_ProgramNode(self, node: ProgramNode) -> None:
         self.current_scope = ScopedSymbolTable('builtins', 0)
@@ -20,7 +31,7 @@ class SemanticAnalyzer(NodeVisitor):
 
         self.current_scope = global_scope
         self.visit(node.block_node)
-        print(self.current_scope)
+        self.log(str(self.current_scope))
 
         self.current_scope = self.current_scope.enclosing_scope
 
@@ -31,20 +42,20 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_VariableDeclarationNode(self, node: VariableDeclarationNode) -> None:
         if self.current_scope is None:
-            raise Exception(f'Unexpected error happened')
+            self.error(ErrorCode.UNEXPECTED_ERROR)
 
         type_name: str = str(node.type_node.type)
         type_symbol: Symbol | None = self.current_scope.lookup(type_name)
         var_name: str = str(node.variable_node.name)
 
         if self.current_scope.lookup(var_name, current_scope_only=True) is not None:
-            raise Exception(f'Duplicate identifier {var_name} found')
+            self.error(ErrorCode.DUPLICATE_ID, node.variable_node)
 
         self.current_scope.define(VariableSymbol(var_name, type_symbol))
 
     def visit_ProcedureDeclarationNode(self, node: ProcedureDeclarationNode) -> None:
         if self.current_scope is None:
-            raise Exception(f'Unexpected error happened')
+            self.error(ErrorCode.UNEXPECTED_ERROR)
 
         procedure_name: str = node.name
         procedure_symbol: ProcedureSymbol = ProcedureSymbol(procedure_name)
@@ -66,7 +77,7 @@ class SemanticAnalyzer(NodeVisitor):
                 procedure_symbol.parameters.append(param_symbol)
 
         self.visit(node.block_node)
-        print(self.current_scope)
+        self.log(str(self.current_scope))
 
         self.current_scope = self.current_scope.enclosing_scope
 
@@ -76,23 +87,23 @@ class SemanticAnalyzer(NodeVisitor):
 
     def visit_AssignNode(self, node: AssignNode) -> None:
         if self.current_scope is None:
-            raise Exception(f'Unexpected error happened')
+            self.error(ErrorCode.UNEXPECTED_ERROR)
 
         variable: Symbol | None = self.current_scope.lookup(str(node.left_operand.name))
 
         if variable is None:
-            raise NameError(f'Variable {node.left_operand.name} not found')
+            self.error(ErrorCode.ID_NOT_FOUND, node.left_operand)
 
         self.visit(node.right_operand)
 
     def visit_VariableNode(self, node: VariableNode):
         if self.current_scope is None:
-            raise Exception(f'Unexpected error happened')
+            self.error(ErrorCode.UNEXPECTED_ERROR)
 
         variable: Symbol | None = self.current_scope.lookup(str(node.name))
 
         if variable is None:
-            raise NameError(f'Variable {node.name} not found')
+            self.error(ErrorCode.ID_NOT_FOUND, node)
 
     def visit_NoOpNode(self, node: NoOpNode):
         pass

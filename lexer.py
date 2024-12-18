@@ -1,3 +1,4 @@
+from errors import LexerError, ErrorCode
 from tokens import *
 
 
@@ -9,13 +10,25 @@ class Lexer(object):
     def __init__(self, text: str) -> None:
         self.pos: int = 0
         self.text: str = text
+        self.line_number: int = 1
         self.current_character: str | None = text[self.pos]
+        self._init_reserved_keywords()
+
+    def _init_reserved_keywords(self) -> None:
+        token_types_list = list(TokenType)
+        start_index: int = token_types_list.index(TokenType.PROGRAM)
+        end_index: int = token_types_list.index(TokenType.END)
+        self.RESERVED_KEYWORDS = {
+            token_type: Token(token_type)
+            for token_type in token_types_list[start_index:end_index + 1]
+        }
 
     def error(self) -> None:
         """ Raises SyntaxError when called
             :raises SyntaxError:
         """
-        raise SyntaxError('Invalid character')
+        message: str = f'\'{self.current_character}\' at line {self.line_number}'
+        raise LexerError(error_code=ErrorCode.UNEXPECTED_CHARACTER, message=message)
 
     def peek(self) -> str | None:
         """ Peeks at the next character if possible.
@@ -33,6 +46,8 @@ class Lexer(object):
         if self.pos < len(self.text) - 1:
             self.pos += 1
             self.current_character = self.text[self.pos]
+            if self.current_character == '\n':
+                self.line_number += 1
         else:
             self.current_character = None
 
@@ -49,17 +64,6 @@ class Lexer(object):
             self.step()
         self.step()
 
-    RESERVED_KEYWORDS: dict[str, Token] = {
-        TokenType.PROGRAM: Token(TokenType.PROGRAM, 'PROGRAM'),
-        TokenType.VAR: Token(TokenType.VAR, 'VAR'),
-        TokenType.PROCEDURE: Token(TokenType.PROCEDURE, 'PROCEDURE'),
-        TokenType.BEGIN: Token(TokenType.BEGIN, 'BEGIN'),
-        TokenType.END: Token(TokenType.END, 'END'),
-        TokenType.DIV: Token(TokenType.DIV, 'DIV'),
-        TokenType.INTEGER: Token(TokenType.INTEGER, 'INTEGER'),
-        TokenType.REAL: Token(TokenType.REAL, 'REAL'),
-    }
-
     def id(self) -> Token:
         """ Reads identifiers.
 
@@ -72,8 +76,8 @@ class Lexer(object):
             self.step()
 
         # remove case sensitivity
-        lower_result: str = result.lower()
-        result_token: Token = self.RESERVED_KEYWORDS.get(lower_result, Token(TokenType.ID, result))
+        upper_result: str = result.upper()
+        result_token: Token = self.RESERVED_KEYWORDS.get(upper_result, Token(TokenType.ID, result, line_number=self.line_number))
 
         return result_token
 
@@ -95,9 +99,9 @@ class Lexer(object):
                 result += self.current_character
                 self.step()
 
-            token: Token = Token(TokenType.REAL_CONST, float(result))
+            token: Token = Token(TokenType.REAL_CONST, float(result), line_number=self.line_number)
         else:
-            token: Token = Token(TokenType.INTEGER_CONST, int(result))
+            token: Token = Token(TokenType.INTEGER_CONST, int(result), line_number=self.line_number)
 
         return token
 
@@ -117,56 +121,23 @@ class Lexer(object):
                 self.skip_comment()
                 continue
 
+            if self.current_character.isdigit():
+                return self.number()
+
             if self.current_character.isalpha() or self.current_character == '_':
                 return self.id()
 
             if self.current_character == ':' and self.peek() == '=':
                 self.step()
                 self.step()
-                return Token(TokenType.ASSIGN, ':=')
+                return Token(TokenType.ASSIGN, line_number=self.line_number)
 
-            if self.current_character == ':':
+            one_character_tokens = (':', ';', '.', ',', '+', '-', '*', '/', '(', ')')
+
+            if self.current_character in one_character_tokens:
+                current_character: str = self.current_character
                 self.step()
-                return Token(TokenType.COLON, ':')
-
-            if self.current_character == ';':
-                self.step()
-                return Token(TokenType.SEMI, ';')
-
-            if self.current_character == '.':
-                self.step()
-                return Token(TokenType.DOT, '.')
-
-            if self.current_character == ',':
-                self.step()
-                return Token(TokenType.COMMA, ',')
-
-            if self.current_character.isdigit():
-                return self.number()
-
-            if self.current_character == '+':
-                self.step()
-                return Token(TokenType.PLUS, '+')
-
-            if self.current_character == '-':
-                self.step()
-                return Token(TokenType.MINUS, '-')
-
-            if self.current_character == '*':
-                self.step()
-                return Token(TokenType.MUL, '*')
-
-            if self.current_character == '/':
-                self.step()
-                return Token(TokenType.FLOAT_DIV, '/')
-
-            if self.current_character == '(':
-                self.step()
-                return Token(TokenType.LPAREN, '(')
-
-            if self.current_character == ')':
-                self.step()
-                return Token(TokenType.RPAREN, ')')
+                return Token(TokenType(current_character), line_number=self.line_number)
 
             self.error()
 
